@@ -10,6 +10,7 @@ import platform
 import uuid
 import logging
 import httpx
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
@@ -52,9 +53,43 @@ class CloudClient:
         self.account_name = name
     
     def _get_device_id(self) -> str:
-        """生成设备唯一标识"""
-        machine_info = f"{platform.node()}-{platform.machine()}-{uuid.getnode()}"
-        return hashlib.sha256(machine_info.encode()).hexdigest()[:32]
+        """
+        生成设备唯一标识
+        
+        优先级:
+        1. 环境变量 DEVICE_ID（推荐 Docker 使用）
+        2. 持久化文件 /app/data/.device_id
+        3. 基于机器信息生成
+        """
+        # 1. 环境变量
+        env_device_id = os.environ.get("DEVICE_ID")
+        if env_device_id:
+            return env_device_id
+        
+        # 2. 持久化文件（Docker 挂载的 data 目录）
+        device_id_file = Path("/app/data/.device_id")
+        if not device_id_file.exists():
+            # 尝试本地开发路径
+            device_id_file = Path(__file__).parent.parent / "data" / ".device_id"
+        
+        if device_id_file.exists():
+            try:
+                return device_id_file.read_text().strip()
+            except Exception:
+                pass
+        
+        # 3. 生成新的 device_id 并保存
+        machine_info = f"{platform.node()}-{platform.machine()}-{uuid.getnode()}-{os.getpid()}"
+        device_id = hashlib.sha256(machine_info.encode()).hexdigest()[:32]
+        
+        # 尝试保存到文件（确保重启后一致）
+        try:
+            device_id_file.parent.mkdir(parents=True, exist_ok=True)
+            device_id_file.write_text(device_id)
+        except Exception:
+            pass  # 保存失败不影响运行
+        
+        return device_id
     
     async def _get_client(self) -> httpx.AsyncClient:
         """获取 HTTP 客户端"""
