@@ -43,6 +43,14 @@ class PositionDelta:
 
 
 @dataclass
+class HedgeApiResult:
+    """Hedge API 响应结果"""
+    positions: Dict[str, TargetHedgePosition]
+    jlp_price: Decimal  # JLP 单价 (从 API 直接获取)
+    jlp_value_usd: Decimal  # JLP 总价值
+
+
+@dataclass
 class HedgeStatus:
     """对冲状态"""
     jlp_amount: Decimal
@@ -120,7 +128,7 @@ class PositionManager:
         logger.warning(f"未找到 {self.JLP_ASSET_NAME} 余额")
         return Decimal("0")
 
-    async def get_target_positions(self, jlp_amount: Decimal) -> Dict[str, TargetHedgePosition]:
+    async def get_target_positions(self, jlp_amount: Decimal) -> HedgeApiResult:
         """
         获取目标对冲仓位 (从 Hedge API，带重试机制)
 
@@ -128,11 +136,15 @@ class PositionManager:
             jlp_amount: JLP 持仓数量
 
         Returns:
-            Dict[str, TargetHedgePosition]: 目标仓位 {symbol: position}
+            HedgeApiResult: 包含目标仓位、JLP 价格等信息
         """
         if jlp_amount <= 0:
             logger.warning("JLP 数量为 0，无需对冲")
-            return {}
+            return HedgeApiResult(
+                positions={},
+                jlp_price=Decimal("0"),
+                jlp_value_usd=Decimal("0"),
+            )
 
         url = f"{self.hedge_api_url}/api/v1/hedge-positions"
         last_error = None
@@ -158,11 +170,13 @@ class PositionManager:
                     raise Exception(f"Hedge API 错误: {error.get('message', '未知错误')}")
 
                 hedge_data = data.get("data", {})
-                positions = hedge_data.get("hedge_positions", {})
+                positions_data = hedge_data.get("hedge_positions", {})
+                jlp_stats = hedge_data.get("jlp_stats", {})
 
-                result = {}
-                for symbol, pos in positions.items():
-                    result[symbol] = TargetHedgePosition(
+                # 解析目标仓位
+                positions = {}
+                for symbol, pos in positions_data.items():
+                    positions[symbol] = TargetHedgePosition(
                         symbol=symbol,
                         amount=Decimal(str(pos["amount"])),
                         value_usd=Decimal(str(pos["value_usd"])),
@@ -170,8 +184,16 @@ class PositionManager:
                         weight=pos["weight"],
                     )
 
-                logger.info(f"目标对冲仓位: {list(result.keys())}")
-                return result
+                # 直接从 API 获取 JLP 价格
+                jlp_price = Decimal(str(jlp_stats.get("virtual_price", 0)))
+                jlp_value_usd = Decimal(str(hedge_data.get("input_jlp_value_usd", 0)))
+
+                logger.info(f"目标对冲仓位: {list(positions.keys())}")
+                return HedgeApiResult(
+                    positions=positions,
+                    jlp_price=jlp_price,
+                    jlp_value_usd=jlp_value_usd,
+                )
 
             except Exception as e:
                 last_error = e
@@ -308,8 +330,9 @@ class PositionManager:
         # 1. 获取 JLP 余额
         jlp_amount = await self.get_jlp_balance()
 
-        # 2. 获取目标仓位
-        target_positions = await self.get_target_positions(jlp_amount)
+        # 2. 获取目标仓位（包含 JLP 价格）
+        api_result = await self.get_target_positions(jlp_amount)
+        target_positions = api_result.positions
 
         # 3. 获取当前仓位
         current_positions = await self.get_current_positions()
@@ -326,22 +349,14 @@ class PositionManager:
             for pos in current_positions.values()
         )
 
-        # JLP 价值 (从 target 数据推算)
-        jlp_value = Decimal("0")
-        if target_positions:
-            # 总对冲价值 / 波动性占比 = JLP 总价值
-            # 这里简化处理
-            total_weight = sum(pos.weight for pos in target_positions.values())
-            if total_weight > 0:
-                jlp_value = total_target_value / Decimal(str(total_weight))
+        # JLP 价格和价值直接从 API 获取
+        jlp_price = api_result.jlp_price
+        jlp_value = api_result.jlp_value_usd
 
         # 对冲比例
         hedge_ratio = 0.0
         if total_target_value > 0:
             hedge_ratio = float(total_current_value / total_target_value)
-
-        # JLP 单价
-        jlp_price = jlp_value / jlp_amount if jlp_amount > 0 else Decimal("0")
 
         return HedgeStatus(
             jlp_amount=jlp_amount,

@@ -157,28 +157,22 @@ class DeltaNeutralStrategy:
                 message=f"JLP 余额: {jlp_amount:.4f}",
             )
             
-            # 获取目标仓位（包含 JLP 价格）用于初始上报
+            # 获取 JLP 价格用于初始上报
             if jlp_amount > 0:
                 try:
-                    target_positions = await self.position_manager.get_target_positions(jlp_amount)
-                    if target_positions:
-                        # 从目标仓位计算 JLP 价值
-                        total_weight = sum(pos.weight for pos in target_positions.values())
-                        total_target_value = sum(pos.value_usd for pos in target_positions.values())
-                        jlp_value = total_target_value / Decimal(str(total_weight)) if total_weight > 0 else Decimal("0")
-                        jlp_price = jlp_value / jlp_amount if jlp_amount > 0 else Decimal("0")
-                        
+                    api_result = await self.position_manager.get_target_positions(jlp_amount)
+                    if api_result.jlp_price > 0:
                         self.data_reporter.update_equity(
                             jlp_amount=float(jlp_amount),
-                            jlp_price=float(jlp_price),
-                            jlp_value_usd=float(jlp_value),
-                            total_equity_usd=float(jlp_value),
+                            jlp_price=float(api_result.jlp_price),
+                            jlp_value_usd=float(api_result.jlp_value_usd),
+                            total_equity_usd=float(api_result.jlp_value_usd),
                             unrealized_pnl=0,
                             margin_ratio=0,
                             hedge_ratio=0,
                             positions={},
                         )
-                        logger.info(f"初始净值数据已上报: JLP价格=${jlp_price:.4f}")
+                        logger.info(f"初始净值数据已上报: JLP价格=${api_result.jlp_price:.4f}")
                 except Exception as e:
                     logger.warning(f"获取初始价格失败: {e}")
 
