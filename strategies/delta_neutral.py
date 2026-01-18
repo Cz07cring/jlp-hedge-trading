@@ -14,6 +14,7 @@ import logging
 import asyncio
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+from decimal import Decimal
 
 from clients.asterdex_client import AsterDexClient
 from services.position_manager import PositionManager
@@ -143,9 +144,9 @@ class DeltaNeutralStrategy:
             except Exception as e:
                 logger.warning(f"设置 {symbol} 杠杆失败: {e}")
 
-        # 获取初始对冲状态（包含 JLP 余额和价格）
-        status = await self.position_manager.get_hedge_status()
-        logger.info(f"JLP 余额: {status.jlp_amount}, 价格: ${status.jlp_price:.4f}")
+        # 获取初始 JLP 余额
+        jlp_amount = await self.position_manager.get_jlp_balance()
+        logger.info(f"JLP 余额: {jlp_amount}")
         
         # 上报启动状态到云端
         if self.data_reporter:
@@ -153,28 +154,33 @@ class DeltaNeutralStrategy:
                 alert_type="startup",
                 level="info",
                 title=f"策略启动 - {self.account_name}",
-                message=f"JLP 余额: {status.jlp_amount:.4f}, 价值: ${status.jlp_value_usd:.2f}",
+                message=f"JLP 余额: {jlp_amount:.4f}",
             )
             
-            # 立即上报初始净值数据（确保首次上报时有数据）
-            self.data_reporter.update_equity(
-                jlp_amount=float(status.jlp_amount),
-                jlp_price=float(status.jlp_price),
-                jlp_value_usd=float(status.jlp_value_usd),
-                total_equity_usd=float(status.jlp_value_usd),
-                unrealized_pnl=0,
-                margin_ratio=0,
-                hedge_ratio=float(status.hedge_ratio),
-                positions={
-                    delta.symbol: {
-                        "target": float(delta.target) if hasattr(delta, 'target') else 0,
-                        "current": float(delta.current) if hasattr(delta, 'current') else 0,
-                        "delta": float(delta.delta),
-                    }
-                    for delta in status.deltas.values()
-                } if status.deltas else {},
-            )
-            logger.info("初始净值数据已上报")
+            # 获取目标仓位（包含 JLP 价格）用于初始上报
+            if jlp_amount > 0:
+                try:
+                    target_positions = await self.position_manager.get_target_positions(jlp_amount)
+                    if target_positions:
+                        # 从目标仓位计算 JLP 价值
+                        total_weight = sum(pos.weight for pos in target_positions.values())
+                        total_target_value = sum(pos.value_usd for pos in target_positions.values())
+                        jlp_value = total_target_value / Decimal(str(total_weight)) if total_weight > 0 else Decimal("0")
+                        jlp_price = jlp_value / jlp_amount if jlp_amount > 0 else Decimal("0")
+                        
+                        self.data_reporter.update_equity(
+                            jlp_amount=float(jlp_amount),
+                            jlp_price=float(jlp_price),
+                            jlp_value_usd=float(jlp_value),
+                            total_equity_usd=float(jlp_value),
+                            unrealized_pnl=0,
+                            margin_ratio=0,
+                            hedge_ratio=0,
+                            positions={},
+                        )
+                        logger.info(f"初始净值数据已上报: JLP价格=${jlp_price:.4f}")
+                except Exception as e:
+                    logger.warning(f"获取初始价格失败: {e}")
 
     async def run_once(self) -> bool:
         """
