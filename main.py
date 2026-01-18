@@ -210,8 +210,10 @@ class HedgeBot:
         if self.cloud_enabled:
             if self.license_manager:
                 await self.license_manager.start_background_check()
-            if self.data_reporter:
-                await self.data_reporter.start_background_report()
+            # 启动每个策略的 data_reporter 后台任务
+            for strategy in self.strategies:
+                if strategy.data_reporter:
+                    await strategy.data_reporter.start_background_report()
             if self.config_sync:
                 await self.config_sync.start_background_sync()
 
@@ -227,8 +229,10 @@ class HedgeBot:
         """停止云端后台任务"""
         if self.license_manager:
             await self.license_manager.stop_background_check()
-        if self.data_reporter:
-            await self.data_reporter.stop_background_report()
+        # 停止每个策略的 data_reporter 后台任务
+        for strategy in self.strategies:
+            if strategy.data_reporter:
+                await strategy.data_reporter.stop_background_report()
         if self.config_sync:
             await self.config_sync.stop_background_sync()
         if self.cloud_client:
