@@ -1,13 +1,8 @@
 #!/bin/bash
-#
-# JLP Hedge Executor - Quick Install Script
-#
-# Usage:
-#   curl -fsSL https://jlp.finance/install.sh | bash
-#
-# Or download and run:
-#   chmod +x install.sh && ./install.sh
-#
+# JLP Hedge Executor 一键安装脚本
+# 使用方法: 
+#   基本安装: sudo bash -c "$(curl -fsSL https://jlp.finance/install.sh)"
+#   预配置安装: sudo LICENSE_KEY="xxx" ASTERDEX_API_KEY="xxx" WALLET_ADDRESS="xxx" bash -c "$(curl -fsSL https://jlp.finance/install.sh)"
 
 set -e
 
@@ -16,110 +11,239 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-# 打印带颜色的消息
-info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+# 预设环境变量（可通过命令行传入）
+PRE_LICENSE_KEY="${LICENSE_KEY:-}"
+PRE_API_KEY="${ASTERDEX_API_KEY:-}"
+PRE_API_SECRET="${ASTERDEX_API_SECRET:-}"
+PRE_WALLET_ADDRESS="${WALLET_ADDRESS:-}"
 
-# Banner
-echo -e "${GREEN}"
-echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                                                               ║"
-echo "║              JLP Hedge Executor Installer                     ║"
-echo "║              Delta Neutral Hedging for JLP                    ║"
-echo "║                                                               ║"
-echo "╚═══════════════════════════════════════════════════════════════╝"
+# 标记是否需要重新登录
+NEED_RELOGIN=false
+
+# Logo
+echo -e "${CYAN}"
+echo "     ██╗██╗     ██████╗     ██╗  ██╗███████╗██████╗  ██████╗ ███████╗"
+echo "     ██║██║     ██╔══██╗    ██║  ██║██╔════╝██╔══██╗██╔════╝ ██╔════╝"
+echo "     ██║██║     ██████╔╝    ███████║█████╗  ██║  ██║██║  ███╗█████╗  "
+echo "██   ██║██║     ██╔═══╝     ██╔══██║██╔══╝  ██║  ██║██║   ██║██╔══╝  "
+echo "╚█████╔╝███████╗██║         ██║  ██║███████╗██████╔╝╚██████╔╝███████╗"
+echo " ╚════╝ ╚══════╝╚═╝         ╚═╝  ╚═╝╚══════╝╚═════╝  ╚═════╝ ╚══════╝"
 echo -e "${NC}"
+echo -e "${GREEN}JLP Hedge Executor - One-Click Installer${NC}"
+echo "==========================================="
+echo ""
 
-# 检查 Docker
-check_docker() {
-    info "Checking Docker installation..."
-    if ! command -v docker &> /dev/null; then
-        error "Docker is not installed. Please install Docker first: https://docs.docker.com/get-docker/"
+# 获取实际用户（即使通过 sudo 运行）
+if [ -n "$SUDO_USER" ]; then
+    REAL_USER="$SUDO_USER"
+    REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    REAL_USER="$USER"
+    REAL_HOME="$HOME"
+fi
+
+# 安装目录（始终安装到实际用户的 home 目录）
+INSTALL_DIR="$REAL_HOME/jlp-hedge"
+
+# 检查操作系统
+check_os() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        OS="linux"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OS="mac"
+    else
+        echo -e "${RED}Error: Unsupported operating system${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓${NC} Operating System: $OS"
+}
+
+# 检查并安装 Docker
+install_docker() {
+    if command -v docker &> /dev/null; then
+        echo -e "${GREEN}✓${NC} Docker is installed"
+    else
+        echo -e "${YELLOW}Docker not found. Installing...${NC}"
+        
+        if [[ "$OS" == "linux" ]]; then
+            curl -fsSL https://get.docker.com | sh
+            echo -e "${GREEN}✓${NC} Docker installed successfully"
+        elif [[ "$OS" == "mac" ]]; then
+            echo -e "${RED}Please install Docker Desktop from: https://www.docker.com/products/docker-desktop${NC}"
+            exit 1
+        fi
     fi
     
-    if ! docker info &> /dev/null; then
-        error "Docker daemon is not running. Please start Docker."
+    # 确保用户在 docker 组中（仅 Linux）
+    if [[ "$OS" == "linux" ]]; then
+        if ! groups "$REAL_USER" | grep -q docker; then
+            echo -e "${YELLOW}Adding $REAL_USER to docker group...${NC}"
+            usermod -aG docker "$REAL_USER"
+            NEED_RELOGIN=true
+            echo -e "${GREEN}✓${NC} User added to docker group"
+        fi
     fi
-    
-    success "Docker is ready"
 }
 
 # 检查 Docker Compose
 check_docker_compose() {
-    info "Checking Docker Compose..."
-    if docker compose version &> /dev/null; then
-        COMPOSE_CMD="docker compose"
-    elif command -v docker-compose &> /dev/null; then
-        COMPOSE_CMD="docker-compose"
+    if command -v docker-compose &> /dev/null || docker compose version &> /dev/null; then
+        echo -e "${GREEN}✓${NC} Docker Compose is available"
     else
-        error "Docker Compose is not installed. Please install Docker Compose."
+        echo -e "${RED}Error: Docker Compose not found${NC}"
+        exit 1
     fi
-    
-    success "Docker Compose is ready ($COMPOSE_CMD)"
 }
 
 # 创建安装目录
 create_install_dir() {
-    INSTALL_DIR="${HOME}/jlp-hedge"
+    if [ -d "$INSTALL_DIR" ]; then
+        echo -e "${YELLOW}Directory $INSTALL_DIR already exists${NC}"
+        read -p "Overwrite? (y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Installation cancelled"
+            exit 1
+        fi
+        rm -rf "$INSTALL_DIR"
+    fi
     
-    info "Creating installation directory: $INSTALL_DIR"
-    mkdir -p "$INSTALL_DIR"/{config,data,logs}
-    cd "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR/data"
+    mkdir -p "$INSTALL_DIR/logs"
     
-    success "Directory created"
+    # 如果通过 sudo 运行，修复目录权限
+    if [ -n "$SUDO_USER" ]; then
+        chown -R "$SUDO_USER:$SUDO_USER" "$INSTALL_DIR"
+    fi
+    
+    echo -e "${GREEN}✓${NC} Created directory: $INSTALL_DIR"
 }
 
 # 下载配置文件
 download_files() {
-    info "Downloading configuration files..."
+    echo -e "${BLUE}Downloading configuration files...${NC}"
     
-    # docker-compose.yml
-    cat > docker-compose.yml << 'COMPOSE_EOF'
-version: '3.8'
-
+    # 下载 docker-compose.yml
+    cat > "$INSTALL_DIR/docker-compose.yml" << 'EOF'
 services:
   jlp-hedge:
     image: ring07c/jlphedge:latest
-    container_name: jlp-hedge
-    restart: unless-stopped
+    container_name: jlp-hedge-executor
+    restart: always
+    env_file:
+      - .env
     volumes:
-      - ./config:/app/config:ro
       - ./data:/app/data
       - ./logs:/app/logs
-    environment:
-      - LICENSE_KEY=${LICENSE_KEY:-}
-      - CLOUD_ENABLED=${CLOUD_ENABLED:-true}
-      - CLOUD_API_URL=${CLOUD_API_URL:-https://api.jlp.finance}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - TZ=${TZ:-Asia/Shanghai}
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "python main.py"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-COMPOSE_EOF
+EOF
     
-    # 配置文件模板
-    cat > config/accounts.json << 'CONFIG_EOF'
+    echo -e "${GREEN}✓${NC} Downloaded docker-compose.yml"
+}
+
+# 交互式配置（支持预填充）
+configure_env() {
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+    echo -e "${CYAN}       Configuration Setup${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+    echo ""
+    
+    # 检查是否有预填充配置
+    if [ -n "$PRE_LICENSE_KEY" ] && [ -n "$PRE_API_KEY" ] && [ -n "$PRE_API_SECRET" ]; then
+        echo -e "${GREEN}✓${NC} Pre-configured credentials detected!"
+        LICENSE_KEY="$PRE_LICENSE_KEY"
+        ASTERDEX_API_KEY="$PRE_API_KEY"
+        ASTERDEX_API_SECRET="$PRE_API_SECRET"
+        WALLET_ADDRESS="$PRE_WALLET_ADDRESS"
+    else
+        # License Key
+        echo -e "${YELLOW}Step 1/2: License Key${NC}"
+        echo "Get your license key from: https://jlp.finance/settings/license"
+        echo ""
+        if [ -n "$PRE_LICENSE_KEY" ]; then
+            LICENSE_KEY="$PRE_LICENSE_KEY"
+            echo -e "${GREEN}✓${NC} License Key: ${LICENSE_KEY:0:8}...${LICENSE_KEY: -4} (pre-configured)"
+        else
+            read -p "Enter your LICENSE_KEY: " LICENSE_KEY
+        fi
+        
+        if [ -z "$LICENSE_KEY" ]; then
+            echo -e "${RED}Error: License key is required${NC}"
+            exit 1
+        fi
+        
+        echo ""
+        
+        # AsterDex API
+        echo -e "${YELLOW}Step 2/2: AsterDex API Credentials${NC}"
+        echo "Get your API keys from: https://www.asterdex.com/api-management"
+        echo ""
+        
+        if [ -n "$PRE_API_KEY" ]; then
+            ASTERDEX_API_KEY="$PRE_API_KEY"
+            echo -e "${GREEN}✓${NC} API Key: (pre-configured)"
+        else
+            read -p "Enter your ASTERDEX_API_KEY: " ASTERDEX_API_KEY
+        fi
+        
+        if [ -n "$PRE_API_SECRET" ]; then
+            ASTERDEX_API_SECRET="$PRE_API_SECRET"
+            echo -e "${GREEN}✓${NC} API Secret: (pre-configured)"
+        else
+            read -p "Enter your ASTERDEX_API_SECRET: " ASTERDEX_API_SECRET
+        fi
+        
+        if [ -z "$ASTERDEX_API_KEY" ] || [ -z "$ASTERDEX_API_SECRET" ]; then
+            echo -e "${RED}Error: AsterDex API credentials are required${NC}"
+            exit 1
+        fi
+        
+        if [ -n "$PRE_WALLET_ADDRESS" ]; then
+            WALLET_ADDRESS="$PRE_WALLET_ADDRESS"
+        else
+            read -p "Enter your Wallet Address: " WALLET_ADDRESS
+        fi
+        
+        if [ -z "$WALLET_ADDRESS" ]; then
+            echo -e "${RED}Error: Wallet address is required${NC}"
+            exit 1
+        fi
+    fi
+    
+    # 创建 .env 文件
+    cat > "$INSTALL_DIR/.env" << EOF
+# JLP Hedge Executor Configuration
+# Generated by install script on $(date)
+
+# License (Required)
+LICENSE_KEY=$LICENSE_KEY
+CLOUD_API_URL=https://jlp.finance
+
+# Logging
+LOG_LEVEL=INFO
+TZ=Asia/Shanghai
+EOF
+    
+    # 创建 accounts.json 配置文件（放在 data 目录）
+    cat > "$INSTALL_DIR/data/accounts.json" << EOF
 {
   "accounts": [
     {
-      "name": "主账户",
+      "name": "Main Account",
       "enabled": true,
       "asterdex": {
         "chain": "solana",
-        "user_address": "YOUR_WALLET_ADDRESS",
-        "api_key": "YOUR_API_KEY",
-        "api_secret": "YOUR_API_SECRET"
+        "user_address": "$WALLET_ADDRESS",
+        "api_key": "$ASTERDEX_API_KEY",
+        "api_secret": "$ASTERDEX_API_SECRET"
       },
       "trading": {
         "leverage": 1,
@@ -131,148 +255,133 @@ COMPOSE_EOF
         },
         "maker_order": {
           "enabled": true,
-          "order_timeout": 1.0,
+          "order_timeout": 5.0,
           "total_timeout": 600,
-          "check_interval_ms": 100,
-          "price_tolerance": 0.0001
+          "split_order_enabled": true,
+          "split_order_threshold": 500.0
         }
       }
     }
   ],
   "global": {
-    "hedge_api_url": "https://jlp.finance",
+    "hedge_api_url": "https://api.jlp.finance",
     "rebalance_interval": 600,
-    "rebalance_threshold": 0.02
+    "rebalance_threshold": 0.02,
+    "max_funding_rate": 0.001,
+    "min_margin_ratio": 0.5,
+    "max_daily_loss": 0.02
   },
   "cloud": {
     "enabled": true,
     "api_url": "https://jlp.finance",
-    "license_key": "YOUR_LICENSE_KEY",
-    "report_interval": 300
+    "license_key": "$LICENSE_KEY",
+    "report_interval": 300,
+    "sync_interval": 300
   }
 }
-CONFIG_EOF
-
-    # .env 文件
-    cat > .env << 'ENV_EOF'
-# JLP Hedge Configuration
-# 请填入您的 License Key
-
-LICENSE_KEY=JLP-XXXX-XXXX-XXXX-XXXX
-LOG_LEVEL=INFO
-TZ=Asia/Shanghai
-ENV_EOF
+EOF
     
-    success "Configuration files created"
+    # 如果通过 sudo 运行，修复配置文件权限
+    if [ -n "$SUDO_USER" ]; then
+        chown -R "$SUDO_USER:$SUDO_USER" "$INSTALL_DIR"
+    fi
+    
+    echo -e "${GREEN}✓${NC} Configuration saved to $INSTALL_DIR/.env"
+    echo -e "${GREEN}✓${NC} Account config saved to $INSTALL_DIR/data/accounts.json"
 }
 
-# 交互式配置
-interactive_config() {
+# 验证 License
+verify_license() {
     echo ""
-    info "Please configure your settings:"
-    echo ""
+    echo -e "${BLUE}Verifying license...${NC}"
     
-    # License Key
-    read -p "Enter your License Key (JLP-XXXX-XXXX-XXXX-XXXX): " LICENSE_KEY
-    if [ -n "$LICENSE_KEY" ]; then
-        sed -i.bak "s/LICENSE_KEY=.*/LICENSE_KEY=$LICENSE_KEY/" .env
-        sed -i.bak "s/YOUR_LICENSE_KEY/$LICENSE_KEY/" config/accounts.json
-        rm -f .env.bak config/accounts.json.bak 2>/dev/null
+    RESPONSE=$(curl -s -X POST "https://jlp.finance/api/hedge/verify" \
+        -H "Content-Type: application/json" \
+        -d "{\"license_key\": \"$LICENSE_KEY\", \"device_id\": \"install-script\"}" 2>/dev/null || echo '{"valid":false}')
+    
+    if echo "$RESPONSE" | grep -q '"valid":true'; then
+        echo -e "${GREEN}✓${NC} License verified successfully!"
+    else
+        echo -e "${YELLOW}⚠${NC} Could not verify license (this may be normal for first-time setup)"
+        echo "  The executor will verify the license when it starts"
     fi
-    
-    # Wallet Address
-    read -p "Enter your Wallet Address: " WALLET_ADDRESS
-    if [ -n "$WALLET_ADDRESS" ]; then
-        sed -i.bak "s/YOUR_WALLET_ADDRESS/$WALLET_ADDRESS/" config/accounts.json
-        rm -f config/accounts.json.bak 2>/dev/null
-    fi
-    
-    # API Key
-    read -p "Enter your AsterDex API Key: " API_KEY
-    if [ -n "$API_KEY" ]; then
-        sed -i.bak "s/YOUR_API_KEY/$API_KEY/" config/accounts.json
-        rm -f config/accounts.json.bak 2>/dev/null
-    fi
-    
-    # API Secret
-    read -s -p "Enter your AsterDex API Secret: " API_SECRET
-    echo ""
-    if [ -n "$API_SECRET" ]; then
-        sed -i.bak "s/YOUR_API_SECRET/$API_SECRET/" config/accounts.json
-        rm -f config/accounts.json.bak 2>/dev/null
-    fi
-    
-    success "Configuration saved"
-}
-
-# 拉取 Docker 镜像
-pull_image() {
-    info "Pulling Docker image..."
-    docker pull ring07c/jlphedge:latest || warn "Image not found in registry yet. Please check https://jlp.finance for updates."
 }
 
 # 启动服务
 start_service() {
     echo ""
-    read -p "Do you want to start the service now? (y/n): " START_NOW
+    echo -e "${BLUE}Starting JLP Hedge Executor...${NC}"
     
-    if [ "$START_NOW" = "y" ] || [ "$START_NOW" = "Y" ]; then
-        info "Starting JLP Hedge Executor..."
-        $COMPOSE_CMD up -d
-        
-        echo ""
-        success "JLP Hedge Executor is now running!"
-        echo ""
-        info "Useful commands:"
-        echo "  View logs:     $COMPOSE_CMD logs -f"
-        echo "  Stop service:  $COMPOSE_CMD down"
-        echo "  Restart:       $COMPOSE_CMD restart"
-        echo ""
-        info "Installation directory: $INSTALL_DIR"
+    cd "$INSTALL_DIR"
+    
+    # 拉取最新镜像
+    docker pull ring07c/jlphedge:latest
+    
+    # 启动服务
+    if command -v docker-compose &> /dev/null; then
+        docker-compose up -d
     else
-        echo ""
-        success "Installation complete!"
-        echo ""
-        info "To start the service later, run:"
-        echo "  cd $INSTALL_DIR && $COMPOSE_CMD up -d"
+        docker compose up -d
     fi
+    
+    echo -e "${GREEN}✓${NC} JLP Hedge Executor started!"
 }
 
-# 打印完成信息
-print_completion() {
+# 显示完成信息
+show_completion() {
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}                  Installation Complete!                        ${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════${NC}"
+    echo -e "${GREEN}     Installation Complete!${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════${NC}"
     echo ""
-    echo "📁 Installation directory: $INSTALL_DIR"
+    echo -e "Installation directory: ${CYAN}$INSTALL_DIR${NC}"
     echo ""
-    echo "📝 Configuration files:"
-    echo "   - $INSTALL_DIR/config/accounts.json"
-    echo "   - $INSTALL_DIR/.env"
+    echo -e "${YELLOW}Useful Commands:${NC}"
+    echo "  View logs:      cd $INSTALL_DIR && docker compose logs -f"
+    echo "  Stop:           cd $INSTALL_DIR && docker compose down"
+    echo "  Restart:        cd $INSTALL_DIR && docker compose restart"
+    echo "  Update:         cd $INSTALL_DIR && docker compose pull && docker compose up -d"
     echo ""
-    echo "🚀 Quick commands:"
-    echo "   cd $INSTALL_DIR"
-    echo "   $COMPOSE_CMD up -d      # Start"
-    echo "   $COMPOSE_CMD logs -f    # View logs"
-    echo "   $COMPOSE_CMD down       # Stop"
+    echo -e "${YELLOW}Configuration:${NC}"
+    echo "  Edit config:    nano $INSTALL_DIR/data/accounts.json"
+    echo "  Edit .env:      nano $INSTALL_DIR/.env"
+    echo "  Multi-account:  Add more entries to 'accounts' array in accounts.json"
     echo ""
-    echo "📖 Documentation: https://jlp.finance/docs"
-    echo "💬 Support: https://jlp.finance/support"
+    echo -e "${YELLOW}Monitor & Notifications:${NC}"
+    echo "  Dashboard:      https://jlp.finance/dashboard"
+    echo "  Notifications:  https://jlp.finance/hedge/config"
+    echo ""
+    
+    # 如果需要重新登录才能使用 docker
+    if [ "$NEED_RELOGIN" = true ]; then
+        echo -e "${YELLOW}════════════════════════════════════════════${NC}"
+        echo -e "${YELLOW}  IMPORTANT: Please log out and back in${NC}"
+        echo -e "${YELLOW}  to use docker without sudo${NC}"
+        echo -e "${YELLOW}════════════════════════════════════════════${NC}"
+        echo ""
+        echo "  After re-login, run: cd ~/jlp-hedge && docker compose logs -f"
+        echo ""
+    fi
+    
+    echo -e "${CYAN}Need help? Contact: support@jlp.finance${NC}"
     echo ""
 }
 
 # 主流程
 main() {
-    check_docker
+    echo "Starting installation..."
+    echo ""
+    
+    check_os
+    install_docker
     check_docker_compose
     create_install_dir
     download_files
-    interactive_config
-    pull_image
+    configure_env
+    verify_license
     start_service
-    print_completion
+    show_completion
 }
 
 # 运行
-main "$@"
+main

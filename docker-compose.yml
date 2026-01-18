@@ -3,9 +3,9 @@
 # ===========================================
 #
 # Quick Start:
-#   1. Create config directory: mkdir -p config data logs
-#   2. Copy config: cp config/accounts.example.json config/accounts.json
-#   3. Edit config/accounts.json with your credentials
+#   1. Create directories: mkdir -p data logs
+#   2. Copy config: cp config/accounts.example.json data/accounts.json
+#   3. Edit data/accounts.json with your credentials
 #   4. Create .env file with LICENSE_KEY
 #   5. Run: docker compose up -d
 #
@@ -32,9 +32,7 @@ services:
     #   dockerfile: Dockerfile
     
     volumes:
-      # 配置文件挂载（只读）
-      - ./config:/app/config:ro
-      # 数据持久化
+      # 数据持久化（包含 accounts.json 配置文件）
       - ./data:/app/data
       # 日志目录
       - ./logs:/app/logs

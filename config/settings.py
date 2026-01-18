@@ -29,7 +29,34 @@ def get_env(key: str, default: Any = None, cast_type: type = str) -> Any:
 
 # 配置文件路径
 CONFIG_DIR = Path(__file__).parent
-ACCOUNTS_FILE = CONFIG_DIR / "accounts.json"
+DATA_DIR = Path(__file__).parent.parent / "data"
+
+
+def get_accounts_file() -> Path:
+    """
+    获取配置文件路径
+    
+    优先级:
+    1. 环境变量 ACCOUNTS_FILE
+    2. data/accounts.json (Docker 挂载)
+    3. config/accounts.json (本地开发)
+    """
+    # 环境变量指定
+    env_path = os.environ.get("ACCOUNTS_FILE")
+    if env_path:
+        return Path(env_path)
+    
+    # Docker 挂载路径
+    data_config = DATA_DIR / "accounts.json"
+    if data_config.exists():
+        return data_config
+    
+    # 本地开发路径
+    return CONFIG_DIR / "accounts.json"
+
+
+# 延迟计算，在实际使用时才确定路径
+ACCOUNTS_FILE = None  # 由 load_config 动态确定
 
 
 @dataclass
@@ -155,7 +182,7 @@ class AppConfig:
         return None
 
 
-def load_config(config_file: Path = ACCOUNTS_FILE) -> AppConfig:
+def load_config(config_file: Path = None) -> AppConfig:
     """
     加载配置文件
 
@@ -165,6 +192,10 @@ def load_config(config_file: Path = ACCOUNTS_FILE) -> AppConfig:
     Returns:
         AppConfig: 应用配置
     """
+    # 动态确定配置文件路径
+    if config_file is None:
+        config_file = get_accounts_file()
+    
     if not config_file.exists():
         raise FileNotFoundError(f"配置文件不存在: {config_file}")
 
@@ -194,6 +225,7 @@ def load_config(config_file: Path = ACCOUNTS_FILE) -> AppConfig:
         cloud.enabled = True
         logger.info("检测到 LICENSE_KEY 环境变量，自动启用云端功能")
 
+    logger.info(f"配置文件: {config_file}")
     logger.info(f"加载配置: {len(accounts)} 个账户")
     if cloud.enabled:
         logger.info(f"云端功能已启用: {cloud.api_url}")
@@ -209,8 +241,11 @@ def load_config(config_file: Path = ACCOUNTS_FILE) -> AppConfig:
     )
 
 
-def save_config(config: AppConfig, config_file: Path = ACCOUNTS_FILE):
+def save_config(config: AppConfig, config_file: Path = None):
     """保存配置到文件"""
+    if config_file is None:
+        config_file = get_accounts_file()
+    
     data = {
         "accounts": [
             {
