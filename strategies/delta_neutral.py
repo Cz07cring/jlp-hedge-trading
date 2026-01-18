@@ -143,9 +143,9 @@ class DeltaNeutralStrategy:
             except Exception as e:
                 logger.warning(f"设置 {symbol} 杠杆失败: {e}")
 
-        # 获取初始 JLP 余额
-        jlp_amount = await self.position_manager.get_jlp_balance()
-        logger.info(f"JLP 余额: {jlp_amount}")
+        # 获取初始对冲状态（包含 JLP 余额和价格）
+        status = await self.position_manager.get_hedge_status()
+        logger.info(f"JLP 余额: {status.jlp_amount}, 价格: ${status.jlp_price:.4f}")
         
         # 上报启动状态到云端
         if self.data_reporter:
@@ -153,8 +153,28 @@ class DeltaNeutralStrategy:
                 alert_type="startup",
                 level="info",
                 title=f"策略启动 - {self.account_name}",
-                message=f"JLP 余额: {jlp_amount:.4f}",
+                message=f"JLP 余额: {status.jlp_amount:.4f}, 价值: ${status.jlp_value_usd:.2f}",
             )
+            
+            # 立即上报初始净值数据（确保首次上报时有数据）
+            self.data_reporter.update_equity(
+                jlp_amount=float(status.jlp_amount),
+                jlp_price=float(status.jlp_price),
+                jlp_value_usd=float(status.jlp_value_usd),
+                total_equity_usd=float(status.jlp_value_usd),
+                unrealized_pnl=0,
+                margin_ratio=0,
+                hedge_ratio=float(status.hedge_ratio),
+                positions={
+                    delta.symbol: {
+                        "target": float(delta.target) if hasattr(delta, 'target') else 0,
+                        "current": float(delta.current) if hasattr(delta, 'current') else 0,
+                        "delta": float(delta.delta),
+                    }
+                    for delta in status.deltas.values()
+                } if status.deltas else {},
+            )
+            logger.info("初始净值数据已上报")
 
     async def run_once(self) -> bool:
         """
