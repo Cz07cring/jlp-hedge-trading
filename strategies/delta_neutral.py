@@ -163,6 +163,7 @@ class DeltaNeutralStrategy:
             if jlp_amount > 0:
                 try:
                     api_result = await self.position_manager.get_target_positions(jlp_amount)
+                    logger.info(f"Hedge API 返回: JLP价格=${api_result.jlp_price:.4f}, JLP价值=${api_result.jlp_value_usd:.2f}")
                     if api_result.jlp_price > 0:
                         self.data_reporter.update_equity(
                             jlp_amount=float(jlp_amount),
@@ -174,9 +175,15 @@ class DeltaNeutralStrategy:
                             hedge_ratio=0,
                             positions={},
                         )
-                        logger.info(f"初始净值数据已上报: JLP价格=${api_result.jlp_price:.4f}")
+                        logger.info(f"初始净值数据已设置: JLP={jlp_amount:.4f}, 价格=${api_result.jlp_price:.4f}")
+                    else:
+                        logger.warning(f"JLP 价格为 0，跳过初始上报")
                 except Exception as e:
                     logger.warning(f"获取初始价格失败: {e}")
+            else:
+                logger.warning(f"JLP 余额为 0，跳过初始上报")
+        else:
+            logger.warning(f"data_reporter 未初始化，跳过初始上报")
 
     async def run_once(self) -> bool:
         """

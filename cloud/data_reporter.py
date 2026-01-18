@@ -227,12 +227,14 @@ class DataReporter:
     
     async def _background_report_loop(self):
         """后台上报循环"""
+        logger.info("后台上报循环已启动，等待 30 秒后执行首次上报...")
         # 启动后等待 30 秒让初始化完成，然后立即上报一次
         await asyncio.sleep(30)
         if self._running:
             if self._equity_data:
                 logger.info("执行首次数据上报...")
-                await self.report_all_now()
+                success = await self.report_all_now()
+                logger.info(f"首次数据上报完成: {'成功' if success else '失败'}")
             else:
                 logger.warning("首次上报跳过: 尚无净值数据（策略可能还在初始化）")
         
