@@ -54,6 +54,7 @@ class DataReporter:
             "positions": positions or {},
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
+        logger.debug(f"净值数据已更新: JLP={jlp_amount:.2f}, 价值=${jlp_value_usd:.2f}")
     
     def add_order(
         self,
@@ -228,9 +229,12 @@ class DataReporter:
         """后台上报循环"""
         # 启动后等待 30 秒让初始化完成，然后立即上报一次
         await asyncio.sleep(30)
-        if self._running and self._equity_data:
-            logger.info("执行首次数据上报...")
-            await self.report_all_now()
+        if self._running:
+            if self._equity_data:
+                logger.info("执行首次数据上报...")
+                await self.report_all_now()
+            else:
+                logger.warning("首次上报跳过: 尚无净值数据（策略可能还在初始化）")
         
         while self._running:
             try:

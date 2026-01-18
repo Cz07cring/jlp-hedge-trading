@@ -263,7 +263,7 @@ class DeltaNeutralStrategy:
             if self.data_reporter:
                 self.data_reporter.update_equity(
                     jlp_amount=float(status.jlp_amount),
-                    jlp_price=float(status.jlp_price) if hasattr(status, 'jlp_price') else 0,
+                    jlp_price=float(status.jlp_price),
                     jlp_value_usd=float(status.jlp_value_usd),
                     total_equity_usd=float(status.jlp_value_usd),  # 使用 JLP 价值作为总净值
                     unrealized_pnl=0,  # TODO: 从账户获取

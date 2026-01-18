@@ -47,6 +47,7 @@ class HedgeStatus:
     """对冲状态"""
     jlp_amount: Decimal
     jlp_value_usd: Decimal
+    jlp_price: Decimal  # JLP 单价
     target_positions: Dict[str, TargetHedgePosition]
     current_positions: Dict[str, Position]
     deltas: Dict[str, PositionDelta]
@@ -339,9 +340,13 @@ class PositionManager:
         if total_target_value > 0:
             hedge_ratio = float(total_current_value / total_target_value)
 
+        # JLP 单价
+        jlp_price = jlp_value / jlp_amount if jlp_amount > 0 else Decimal("0")
+
         return HedgeStatus(
             jlp_amount=jlp_amount,
             jlp_value_usd=jlp_value,
+            jlp_price=jlp_price,
             target_positions=target_positions,
             current_positions=current_positions,
             deltas=deltas,
