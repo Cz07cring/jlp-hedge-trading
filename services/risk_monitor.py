@@ -72,6 +72,7 @@ class RiskMonitor:
         self,
         asterdex_client: AsterDexClient,
         hedge_api_url: str = "https://api.jlp.finance",
+        license_key: Optional[str] = None,
         max_funding_rate: float = 0.001,
         min_margin_ratio: float = 0.1,
         max_position_deviation: float = 0.05,
@@ -90,6 +91,7 @@ class RiskMonitor:
         """
         self.client = asterdex_client
         self.hedge_api_url = hedge_api_url
+        self.license_key = license_key
         self.max_funding_rate = max_funding_rate
         self.min_margin_ratio = min_margin_ratio
         self.max_position_deviation = max_position_deviation
@@ -220,9 +222,12 @@ class RiskMonitor:
         try:
             url = f"{self.hedge_api_url}/api/v1/hedge-positions"
             params = {"jlp_amount": float(jlp_amount)}
+            headers = {"User-Agent": "JLP-Hedge-Trading/1.0"}
+            if self.license_key:
+                headers["X-License-Key"] = self.license_key
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=10) as resp:
+                async with session.get(url, params=params, headers=headers, timeout=10) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         if data.get("success"):

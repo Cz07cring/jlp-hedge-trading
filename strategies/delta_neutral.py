@@ -115,9 +115,11 @@ class DeltaNeutralStrategy:
             logger.info(f"[{self.account_name}] 使用市价单模式")
 
         # 初始化风险监控
+        license_key = cloud_client.config.license_key if cloud_client else None
         self.risk_monitor = RiskMonitor(
             asterdex_client=self.client,
             hedge_api_url=global_config.hedge_api_url,
+            license_key=license_key,
             max_funding_rate=global_config.max_funding_rate,
             min_margin_ratio=global_config.min_margin_ratio,
             max_daily_loss=global_config.max_daily_loss,
