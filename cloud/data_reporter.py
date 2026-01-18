@@ -226,6 +226,12 @@ class DataReporter:
     
     async def _background_report_loop(self):
         """后台上报循环"""
+        # 启动后等待 30 秒让初始化完成，然后立即上报一次
+        await asyncio.sleep(30)
+        if self._running and self._equity_data:
+            logger.info("执行首次数据上报...")
+            await self.report_all_now()
+        
         while self._running:
             try:
                 await asyncio.sleep(self.report_interval)
