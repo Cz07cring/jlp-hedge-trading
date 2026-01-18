@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test files
+tests/
+test_*.py
+*_test.py
+conftest.py
+
+# Documentation (keep README)
+docs/
+*.md
+!README.md
+
+# Config (exclude real config, keep example)
+config/accounts.json
+config/accounts.test.json
+.env
+.env.*
+!.env.example
+
+# Runtime data
+data/
+logs/
+*.log
+*.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker files (no need inside container)
+Dockerfile
+docker-compose*.yml

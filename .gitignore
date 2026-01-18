@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 数据文件（包含历史数据）
+data/equity_history.csv
+data/daily_summary.csv
+data/charts/
+
+# 配置文件（包含敏感信息）
+config/accounts.json
+
+# 日志
+*.log
+logs/
+
+# PM2
+ecosystem.config.js

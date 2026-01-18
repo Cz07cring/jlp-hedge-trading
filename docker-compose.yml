@@ -1,0 +1,92 @@
+# ===========================================
+# JLP Hedge Executor - Docker Compose
+# ===========================================
+#
+# Quick Start:
+#   1. Create config directory: mkdir -p config data logs
+#   2. Copy config: cp config/accounts.example.json config/accounts.json
+#   3. Edit config/accounts.json with your credentials
+#   4. Create .env file with LICENSE_KEY
+#   5. Run: docker compose up -d
+#
+# Or use the config generator at: https://jlp.finance/download
+#
+# View Logs:
+#   docker compose logs -f
+#
+# Stop:
+#   docker compose down
+
+version: '3.8'
+
+services:
+  jlp-hedge:
+    # 使用官方镜像
+    image: ring07c/jlphedge:latest
+    container_name: jlp-hedge
+    restart: unless-stopped
+    
+    # 本地构建（开发用）
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    
+    volumes:
+      # 配置文件挂载（只读）
+      - ./config:/app/config:ro
+      # 数据持久化
+      - ./data:/app/data
+      # 日志目录
+      - ./logs:/app/logs
+    
+    environment:
+      # ===== 必填配置 =====
+      # License Key（从 https://jlp.finance/settings/license 获取）
+      - LICENSE_KEY=${LICENSE_KEY:?LICENSE_KEY is required}
+      
+      # ===== 云端配置（可选）=====
+      # 云端 API 地址（默认官方服务）
+      - CLOUD_API_URL=${CLOUD_API_URL:-https://jlp.finance}
+      # 启用云端功能
+      - CLOUD_ENABLED=${CLOUD_ENABLED:-true}
+      # 数据上报间隔（秒）
+      - REPORT_INTERVAL=${REPORT_INTERVAL:-300}
+      
+      # ===== 系统配置（可选）=====
+      # 日志级别: DEBUG, INFO, WARNING, ERROR
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # 时区
+      - TZ=${TZ:-Asia/Shanghai}
+    
+    # 网络配置
+    networks:
+      - hedge-network
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # 日志配置（防止日志过大）
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python main.py"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  hedge-network:
+    driver: bridge

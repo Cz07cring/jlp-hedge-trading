@@ -1,0 +1,51 @@
+{
+  "accounts": [
+    {
+      "name": "测试账户",
+      "enabled": true,
+      "asterdex": {
+        "chain": "solana",
+        "user_address": "2hGZfrnnowiHv7c8jfMJpBtn46tqQCd4NUPr1NzAPxgu",
+        "api_key": "c2f346c55dc18e231610f27dd76cb527f0520c372d8ac671da97704707d49ca3",
+        "api_secret": "d73d4e6950115f9676c8ebbdfc3ac7e993414762d1a6ab651fef99ba56001cd6"
+      },
+      "trading": {
+        "leverage": 1,
+        "slippage": 0.001,
+        "min_order_size": {
+          "SOL": 0.01,
+          "ETH": 0.001,
+          "BTC": 0.0001
+        },
+        "maker_order": {
+          "enabled": true,
+          "order_timeout": 1.0,
+          "total_timeout": 600,
+          "check_interval_ms": 100,
+          "price_tolerance": 0.0001,
+          "max_iterations": 600
+        }
+      }
+    }
+  ],
+  "global": {
+    "hedge_api_url": "http://localhost:3000",
+    "rebalance_interval": 600,
+    "rebalance_threshold": 0.02,
+    "max_funding_rate": 0.001,
+    "min_margin_ratio": 0.5,
+    "max_daily_loss": 0.02
+  },
+  "notification": {
+    "enabled": false,
+    "wechat_webhook": ""
+  },
+  "cloud": {
+    "enabled": true,
+    "api_url": "http://localhost:3001",
+    "license_key": "JLP-OSCG-9LUY-QRMW-THOJ",
+    "report_interval": 60,
+    "sync_interval": 60,
+    "timeout": 30.0
+  }
+}

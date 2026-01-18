@@ -1,0 +1,54 @@
+{
+  "accounts": [
+    {
+      "name": "Main Account",
+      "enabled": true,
+      "asterdex": {
+        "chain": "solana",
+        "user_address": "YOUR_SOLANA_WALLET_ADDRESS",
+        "api_key": "YOUR_ASTERDEX_API_KEY",
+        "api_secret": "YOUR_ASTERDEX_API_SECRET"
+      },
+      "trading": {
+        "leverage": 1,
+        "slippage": 0.001,
+        "min_order_size": {
+          "SOL": 0.01,
+          "ETH": 0.001,
+          "BTC": 0.0001
+        },
+        "maker_order": {
+          "enabled": true,
+          "order_timeout": 1.0,
+          "total_timeout": 600,
+          "check_interval_ms": 100,
+          "price_tolerance": 0.0001,
+          "max_iterations": 600,
+          "split_order_enabled": true,
+          "split_order_threshold": 1500.0,
+          "split_order_min_value": 300.0,
+          "split_order_max_value": 800.0
+        }
+      }
+    }
+  ],
+  "global": {
+    "rebalance_interval": 600,
+    "rebalance_threshold": 0.02,
+    "max_funding_rate": 0.001,
+    "min_margin_ratio": 0.5,
+    "max_daily_loss": 0.02
+  },
+  "notification": {
+    "enabled": false,
+    "wechat_webhook": ""
+  },
+  "cloud": {
+    "enabled": true,
+    "api_url": "https://jlp.finance",
+    "license_key": "YOUR_LICENSE_KEY",
+    "report_interval": 300,
+    "sync_interval": 300,
+    "timeout": 30.0
+  }
+}

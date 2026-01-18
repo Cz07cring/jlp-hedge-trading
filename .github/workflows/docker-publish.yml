@@ -1,0 +1,120 @@
+# ===========================================
+# JLP Hedge Executor - Docker Build & Publish
+# ===========================================
+#
+# 此工作流会：
+# 1. 在 push tag 时自动构建和发布 Docker 镜像
+# 2. 支持多平台构建 (amd64, arm64)
+# 3. 推送到 Docker Hub
+#
+# 发布新版本:
+#   git tag v1.0.0
+#   git push origin v1.0.0
+#
+# 需要在 GitHub Secrets 中配置:
+#   - DOCKERHUB_USERNAME: Docker Hub 用户名
+#   - DOCKERHUB_TOKEN: Docker Hub Access Token
+
+name: Docker Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag (e.g., latest, v1.0.0)'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ring07c/jlphedge
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # 手动触发时使用输入的 tag
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            # tag 推送时提取版本号
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # 添加 latest 标签
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: ./README.md
+
+  # 可选：创建 GitHub Release
+  create-release:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          body: |
+            ## Docker 镜像
+
+            ```bash
+            docker pull ring07c/jlphedge:${{ github.ref_name }}
+            ```
+
+            ## 快速开始
+
+            1. 访问 [jlp.finance/download](https://jlp.finance/download) 获取配置
+            2. 运行安装脚本或使用 Docker Compose
+
+            详细文档: https://jlp.finance/docs
