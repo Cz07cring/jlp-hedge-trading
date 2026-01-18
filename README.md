@@ -127,8 +127,8 @@ Connect to [JLP Hedge SaaS](https://jlp.finance) for:
 | Plan | Price | Accounts | Description |
 |------|-------|----------|-------------|
 | Pro (Monthly) | $29/mo | 1 | Individual users |
-| Pro (Yearly) | $199/yr | 1 | Save money |
-| Lifetime | $599 | 100 | Multi-account support |
+| Pro (Yearly) | $288/yr | 1 | Save money |
+| Lifetime | $688 | 100 | Multi-account support |
 
 ### Security
 
@@ -281,8 +281,8 @@ python main.py
 | 计划 | 价格 | 账户数 | 说明 |
 |------|------|--------|------|
 | 专业版（月付） | $29/月 | 1 | 个人用户 |
-| 专业版（年付） | $199/年 | 1 | 个人用户（省钱） |
-| 终身版 | $599 | 100 | 多账户支持 |
+| 专业版（年付） | $288/年 | 1 | 个人用户（省钱） |
+| 终身版 | $688 | 100 | 多账户支持 |
 
 ### 安全说明
 
