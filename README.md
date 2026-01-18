@@ -89,7 +89,7 @@ curl -fsSL https://jlp.finance/install.sh | bash
 
 ```bash
 # 克隆项目
-git clone https://github.com/ring07c/jlp-hedge-trading.git
+git clone https://github.com/Cz07cring/jlp-hedge-trading.git
 cd jlp-hedge-trading
 
 # 创建虚拟环境
