@@ -26,6 +26,8 @@ data/charts/
 
 # 配置文件（包含敏感信息）
 config/accounts.json
+config/accounts.test.json
+config/*.local.json
 
 # 日志
 *.log
@@ -33,3 +35,10 @@ logs/
 
 # PM2
 ecosystem.config.js
+
+# Test files with real credentials
+test_real_data.py
+test_aster_query.py
+test_cloud.py
+tests/test_solana_api.py
+tests/test_signature.py

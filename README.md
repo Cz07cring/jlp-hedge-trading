@@ -72,7 +72,8 @@ python main.py
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `LICENSE_KEY` | ✅ | - | License key from jlp.finance |
-| `CLOUD_API_URL` | ❌ | `https://jlp.finance` | Cloud API endpoint |
+| `CLOUD_API_URL` | ❌ | `https://jlp.finance` | SaaS platform URL (for license, data sync) |
+| `HEDGE_API_URL` | ❌ | `https://api.jlp.finance` | Hedge calculation API endpoint |
 | `CLOUD_ENABLED` | ❌ | `true` | Enable cloud features |
 | `REPORT_INTERVAL` | ❌ | `300` | Data reporting interval (seconds) |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level (DEBUG/INFO/WARNING/ERROR) |
@@ -214,7 +215,8 @@ python main.py
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
 | `LICENSE_KEY` | ✅ | - | License Key（从 SaaS 获取） |
-| `CLOUD_API_URL` | ❌ | `https://jlp.finance` | 云端 API 地址 |
+| `CLOUD_API_URL` | ❌ | `https://jlp.finance` | SaaS 平台地址（License 验证、数据同步） |
+| `HEDGE_API_URL` | ❌ | `https://api.jlp.finance` | 对冲计算 API 地址 |
 | `CLOUD_ENABLED` | ❌ | `true` | 启用云端功能 |
 | `REPORT_INTERVAL` | ❌ | `300` | 数据上报间隔（秒） |
 | `LOG_LEVEL` | ❌ | `INFO` | 日志级别 |

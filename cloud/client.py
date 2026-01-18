@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class CloudConfig:
     """云端配置"""
     enabled: bool = True
-    api_url: str = "https://your-saas-domain.com"
+    api_url: str = "https://jlp.finance"  # SaaS 平台 URL
     license_key: str = ""
     report_interval: int = 300  # 上报间隔（秒）
     timeout: float = 30.0
@@ -30,7 +30,7 @@ class CloudConfig:
         """从环境变量加载配置"""
         return cls(
             enabled=os.getenv("CLOUD_ENABLED", "true").lower() == "true",
-            api_url=os.getenv("CLOUD_API_URL", "https://your-saas-domain.com"),
+            api_url=os.getenv("CLOUD_API_URL", "https://jlp.finance"),
             license_key=os.getenv("LICENSE_KEY", ""),
             report_interval=int(os.getenv("REPORT_INTERVAL", "300")),
             timeout=float(os.getenv("CLOUD_TIMEOUT", "30.0")),
@@ -323,7 +323,7 @@ class CloudClient:
     
     async def get_hedge_positions(self, jlp_amount: float) -> Dict[str, Any]:
         """
-        调用云端 API 计算对冲仓位
+        调用 Hedge API 计算对冲仓位
         
         Args:
             jlp_amount: JLP 持有数量
@@ -331,8 +331,8 @@ class CloudClient:
         Returns:
             对冲仓位计算结果
         """
-        # 这里调用 jlp-hedge-python 服务
-        hedge_api_url = os.getenv("HEDGE_API_URL", "http://localhost:3000")
+        # Hedge API 默认使用 api.jlp.finance
+        hedge_api_url = os.getenv("HEDGE_API_URL", "https://api.jlp.finance")
         
         try:
             client = await self._get_client()
@@ -344,6 +344,12 @@ class CloudClient:
             
             if resp.status_code == 200:
                 return resp.json()
+            elif resp.status_code == 401:
+                logger.error("Hedge API 调用失败: License Key 无效或未提供")
+                return {"success": False, "error": "Invalid or missing License Key"}
+            elif resp.status_code == 403:
+                logger.error("Hedge API 调用失败: License 已过期或无权限")
+                return {"success": False, "error": "License expired or no permission"}
             else:
                 logger.error(f"对冲仓位计算失败: HTTP {resp.status_code}")
                 return {"success": False, "error": f"HTTP {resp.status_code}"}

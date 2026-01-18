@@ -45,8 +45,10 @@ services:
       - LICENSE_KEY=${LICENSE_KEY:?LICENSE_KEY is required}
       
       # ===== 云端配置（可选）=====
-      # 云端 API 地址（默认官方服务）
+      # SaaS 平台地址（License 验证、数据同步）
       - CLOUD_API_URL=${CLOUD_API_URL:-https://jlp.finance}
+      # 对冲计算 API 地址
+      - HEDGE_API_URL=${HEDGE_API_URL:-https://api.jlp.finance}
       # 启用云端功能
       - CLOUD_ENABLED=${CLOUD_ENABLED:-true}
       # 数据上报间隔（秒）

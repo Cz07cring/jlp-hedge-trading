@@ -57,7 +57,7 @@ class EquityCollector:
         self,
         asterdex_client: AsterDexClient,
         account_name: str,
-        hedge_api_url: str = "http://localhost:3000",
+        hedge_api_url: str = "https://api.jlp.finance",
     ):
         """
         初始化采集器

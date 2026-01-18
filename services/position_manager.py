@@ -78,6 +78,7 @@ class PositionManager:
         hedge_api_url: str,
         rebalance_threshold: float = 0.02,
         min_order_sizes: Optional[Dict[str, float]] = None,
+        license_key: Optional[str] = None,
     ):
         """
         初始化仓位管理器
@@ -87,6 +88,7 @@ class PositionManager:
             hedge_api_url: 对冲计算 API 地址
             rebalance_threshold: 调仓阈值 (2%)
             min_order_sizes: 最小下单量
+            license_key: License Key (用于调用 Hedge API)
         """
         self.client = asterdex_client
         self.hedge_api_url = hedge_api_url.rstrip("/")
@@ -96,6 +98,7 @@ class PositionManager:
             "ETH": 0.001,
             "BTC": 0.0001,
         }
+        self.license_key = license_key or ""
 
         logger.info(f"仓位管理器初始化: hedge_api={hedge_api_url}")
 
@@ -132,11 +135,20 @@ class PositionManager:
 
         url = f"{self.hedge_api_url}/api/v1/hedge-positions"
         last_error = None
+        
+        # 构建请求头（携带 License Key）
+        headers = {"User-Agent": "JLP-Hedge-Trading/1.0"}
+        if self.license_key:
+            headers["X-License-Key"] = self.license_key
 
         for attempt in range(self.MAX_RETRIES):
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.get(url, params={"jlp_amount": float(jlp_amount)})
+                    response = await client.get(
+                        url, 
+                        params={"jlp_amount": float(jlp_amount)},
+                        headers=headers,
+                    )
                     response.raise_for_status()
                     data = response.json()
 

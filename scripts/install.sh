@@ -3,7 +3,7 @@
 # JLP Hedge Executor - Quick Install Script
 #
 # Usage:
-#   curl -fsSL https://your-domain.com/install.sh | bash
+#   curl -fsSL https://jlp.finance/install.sh | bash
 #
 # Or download and run:
 #   chmod +x install.sh && ./install.sh
@@ -93,7 +93,7 @@ services:
     environment:
       - LICENSE_KEY=${LICENSE_KEY:-}
       - CLOUD_ENABLED=${CLOUD_ENABLED:-true}
-      - CLOUD_API_URL=${CLOUD_API_URL:-https://jlp.finance}
+      - CLOUD_API_URL=${CLOUD_API_URL:-https://api.jlp.finance}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-Asia/Shanghai}
     logging:
@@ -140,7 +140,7 @@ COMPOSE_EOF
     }
   ],
   "global": {
-    "hedge_api_url": "http://localhost:3000",
+    "hedge_api_url": "https://jlp.finance",
     "rebalance_interval": 600,
     "rebalance_threshold": 0.02
   },

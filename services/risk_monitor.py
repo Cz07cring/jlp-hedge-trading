@@ -71,7 +71,7 @@ class RiskMonitor:
     def __init__(
         self,
         asterdex_client: AsterDexClient,
-        hedge_api_url: str = "http://localhost:3000",
+        hedge_api_url: str = "https://api.jlp.finance",
         max_funding_rate: float = 0.001,
         min_margin_ratio: float = 0.1,
         max_position_deviation: float = 0.05,

@@ -20,8 +20,7 @@ from services.position_manager import PositionManager
 from services.order_executor import OrderExecutor, ExecutionStatus
 from services.maker_order_config import MakerOrderConfig
 from services.risk_monitor import RiskMonitor, AlertLevel
-from utils.notifier import WeChatNotifier
-from config.settings import AccountConfig, GlobalConfig, NotificationConfig
+from config.settings import AccountConfig, GlobalConfig
 
 # 类型提示，避免循环导入
 if TYPE_CHECKING:
@@ -38,7 +37,6 @@ class DeltaNeutralStrategy:
         self,
         account_config: AccountConfig,
         global_config: GlobalConfig,
-        notification_config: NotificationConfig,
         cloud_client: Optional["CloudClient"] = None,
         data_reporter: Optional["DataReporter"] = None,
     ):
@@ -48,7 +46,6 @@ class DeltaNeutralStrategy:
         Args:
             account_config: 账户配置
             global_config: 全局配置
-            notification_config: 通知配置
             cloud_client: 云端客户端（可选）
             data_reporter: 数据上报器（可选）
         """
@@ -73,11 +70,14 @@ class DeltaNeutralStrategy:
         )
 
         # 初始化仓位管理器
+        # 从 cloud_client 获取 license_key 用于调用 Hedge API
+        license_key = cloud_client.config.license_key if cloud_client else ""
         self.position_manager = PositionManager(
             asterdex_client=self.client,
             hedge_api_url=global_config.hedge_api_url,
             rebalance_threshold=global_config.rebalance_threshold,
             min_order_sizes=account_config.trading.min_order_size,
+            license_key=license_key,
         )
 
         # 初始化订单执行器
@@ -122,12 +122,6 @@ class DeltaNeutralStrategy:
             max_daily_loss=global_config.max_daily_loss,
         )
 
-        # 初始化通知器
-        self.notifier = WeChatNotifier(
-            webhook_url=notification_config.wechat_webhook,
-            enabled=notification_config.enabled,
-        )
-
         # 运行状态
         self.is_running = False
         self.last_rebalance_time: Optional[datetime] = None
@@ -152,12 +146,15 @@ class DeltaNeutralStrategy:
         # 获取初始 JLP 余额
         jlp_amount = await self.position_manager.get_jlp_balance()
         logger.info(f"JLP 余额: {jlp_amount}")
-
-        # 发送启动通知
-        await self.notifier.notify_startup(
-            self.account_name,
-            float(jlp_amount),
-        )
+        
+        # 上报启动状态到云端
+        if self.data_reporter:
+            self.data_reporter.add_alert(
+                alert_type="startup",
+                level="info",
+                title=f"策略启动 - {self.account_name}",
+                message=f"JLP 余额: {jlp_amount:.4f}",
+            )
 
     async def run_once(self) -> bool:
         """
@@ -197,17 +194,6 @@ class DeltaNeutralStrategy:
 
                 # 统计失败数量
                 failed_count = sum(1 for r in results if r.status == ExecutionStatus.FAILED)
-
-                # 发送调仓通知
-                adjustments = {
-                    delta.symbol: float(delta.delta)
-                    for delta in significant_deltas.values()
-                }
-                await self.notifier.notify_rebalance(
-                    self.account_name,
-                    adjustments,
-                    float(status.total_target_value),
-                )
 
                 if failed_count > 0:
                     logger.warning(f"有 {failed_count} 个订单执行失败")
@@ -253,19 +239,23 @@ class DeltaNeutralStrategy:
 
             risk_metrics = await self.risk_monitor.check_all(position_deviation)
 
-            # 处理告警
+            # 处理告警（上报到云端）
             if risk_metrics.alerts:
                 for alert in risk_metrics.alerts:
-                    if alert.level == AlertLevel.CRITICAL:
-                        await self.notifier.notify_risk_alert(
-                            self.account_name,
-                            alert.alert_type.value,
-                            alert.message,
+                    logger.warning(f"风险告警: [{alert.level.value}] {alert.alert_type.value} - {alert.message}")
+                    
+                    # 上报告警到云端
+                    if self.data_reporter:
+                        self.data_reporter.add_alert(
+                            alert_type=alert.alert_type.value,
+                            level=alert.level.value,
+                            title=f"风险告警 - {self.account_name}",
+                            message=alert.message,
                         )
-
-                        # 严重告警：考虑紧急平仓
-                        if alert.alert_type.value == "margin_low":
-                            logger.critical("保证金率过低，建议人工介入！")
+                    
+                    # 严重告警：考虑紧急平仓
+                    if alert.level == AlertLevel.CRITICAL and alert.alert_type.value == "margin_low":
+                        logger.critical("保证金率过低，建议人工介入！")
 
             self.last_rebalance_time = datetime.now()
             
@@ -293,7 +283,6 @@ class DeltaNeutralStrategy:
 
         except Exception as e:
             logger.exception(f"[{self.account_name}] 调仓失败: {e}")
-            await self.notifier.notify_error(self.account_name, str(e))
             
             # 上报告警到云端
             if self.data_reporter:

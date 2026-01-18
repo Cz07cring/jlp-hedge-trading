@@ -167,7 +167,6 @@ class HedgeBot:
             strategy = DeltaNeutralStrategy(
                 account_config=account,
                 global_config=config.global_config,
-                notification_config=config.notification,
                 cloud_client=account_cloud_client or self.cloud_client,
                 data_reporter=account_data_reporter or self.data_reporter,
             )

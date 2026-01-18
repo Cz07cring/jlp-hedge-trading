@@ -4,7 +4,7 @@
 # ===========================================
 #
 # Build:
-#   docker build -t jlp-hedge-executor .
+#   docker build -t ring07c/jlphedge:latest .
 #
 # Run:
 #   docker run -d --name jlp-hedge \
@@ -12,7 +12,7 @@
 #     -v $(pwd)/config:/app/config:ro \
 #     -v $(pwd)/data:/app/data \
 #     -v $(pwd)/logs:/app/logs \
-#     jlp-hedge-executor
+#     ring07c/jlphedge:latest
 
 FROM python:3.11-slim AS builder
 

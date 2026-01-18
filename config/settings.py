@@ -114,29 +114,22 @@ class AccountConfig:
 @dataclass
 class GlobalConfig:
     """全局配置"""
-    hedge_api_url: str = "http://localhost:3000"
+    hedge_api_url: str = "https://api.jlp.finance"  # 对冲计算 API
     asterdex_base_url: str = "https://fapi.asterdex.com"
     asterdex_ws_url: str = "wss://fstream.asterdex.com"
-    rebalance_interval: int = 600
-    rebalance_threshold: float = 0.02
-    max_funding_rate: float = 0.001
-    min_margin_ratio: float = 0.1
-    max_daily_loss: float = 0.02
+    rebalance_interval: int = 600  # 调仓检查间隔（秒）
+    rebalance_threshold: float = 0.02  # 调仓阈值（2%）
+    max_funding_rate: float = 0.001  # 最大资金费率
+    min_margin_ratio: float = 0.1  # 最低保证金率
+    max_daily_loss: float = 0.02  # 最大日亏损
     log_level: str = "INFO"
-
-
-@dataclass
-class NotificationConfig:
-    """通知配置"""
-    enabled: bool = True
-    wechat_webhook: str = ""
 
 
 @dataclass
 class CloudConfig:
     """云端配置"""
     enabled: bool = False  # 是否启用云端功能
-    api_url: str = "https://your-saas-domain.com"  # SaaS 平台 URL
+    api_url: str = "https://jlp.finance"  # SaaS 平台 URL
     license_key: str = ""  # License Key
     report_interval: int = 300  # 数据上报间隔（秒）
     sync_interval: int = 300  # 配置同步间隔（秒）
@@ -148,7 +141,6 @@ class AppConfig:
     """应用总配置"""
     accounts: List[AccountConfig]
     global_config: GlobalConfig
-    notification: NotificationConfig
     cloud: CloudConfig = field(default_factory=CloudConfig)
 
     def get_enabled_accounts(self) -> List[AccountConfig]:
@@ -185,7 +177,6 @@ def load_config(config_file: Path = ACCOUNTS_FILE) -> AppConfig:
     ]
 
     global_config = GlobalConfig(**data.get("global", {}))
-    notification = NotificationConfig(**data.get("notification", {}))
     
     # 加载云端配置（支持环境变量覆盖，Docker 友好）
     cloud_data = data.get("cloud", {})
@@ -214,7 +205,6 @@ def load_config(config_file: Path = ACCOUNTS_FILE) -> AppConfig:
     return AppConfig(
         accounts=accounts,
         global_config=global_config,
-        notification=notification,
         cloud=cloud,
     )
 
@@ -246,10 +236,6 @@ def save_config(config: AppConfig, config_file: Path = ACCOUNTS_FILE):
             "max_funding_rate": config.global_config.max_funding_rate,
             "min_margin_ratio": config.global_config.min_margin_ratio,
             "max_daily_loss": config.global_config.max_daily_loss,
-        },
-        "notification": {
-            "enabled": config.notification.enabled,
-            "wechat_webhook": config.notification.wechat_webhook,
         },
     }
 

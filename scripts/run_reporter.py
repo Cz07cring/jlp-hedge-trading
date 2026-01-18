@@ -87,7 +87,7 @@ class EquityReporter:
     async def _init_clients(self):
         """初始化所有启用账户的 AsterDex 客户端"""
         accounts = self.config.get("accounts", [])
-        hedge_api_url = self.config.get("global", {}).get("hedge_api_url", "http://localhost:3000")
+        hedge_api_url = self.config.get("global", {}).get("hedge_api_url", "https://api.jlp.finance")
 
         for acc in accounts:
             if not acc.get("enabled", True):

@@ -83,7 +83,8 @@ services:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `LICENSE_KEY` | Yes | - | License key from jlp.finance |
-| `CLOUD_API_URL` | No | `https://jlp.finance` | Cloud API endpoint |
+| `CLOUD_API_URL` | No | `https://jlp.finance` | SaaS platform URL (license, data sync) |
+| `HEDGE_API_URL` | No | `https://api.jlp.finance` | Hedge calculation API |
 | `CLOUD_ENABLED` | No | `true` | Enable cloud features |
 | `LOG_LEVEL` | No | `INFO` | Log level (DEBUG/INFO/WARNING/ERROR) |
 | `TZ` | No | `Asia/Shanghai` | Timezone |
