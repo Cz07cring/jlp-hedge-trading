@@ -159,23 +159,27 @@ class DeltaNeutralStrategy:
                 message=f"JLP 余额: {jlp_amount:.4f}",
             )
             
-            # 获取 JLP 价格用于初始上报
+            # 获取 JLP 价格和真正的账户净值用于初始上报
             if jlp_amount > 0:
                 try:
                     api_result = await self.position_manager.get_target_positions(jlp_amount)
                     logger.info(f"Hedge API 返回: JLP价格=${api_result.jlp_price:.4f}, JLP价值=${api_result.jlp_value_usd:.2f}")
                     if api_result.jlp_price > 0:
+                        # 获取真正的账户净值（JLP价值 + USDT余额 + 空单未实现盈亏）
+                        total_equity = await self.risk_monitor.get_account_equity()
+                        unrealized_pnl = float(total_equity) - float(api_result.jlp_value_usd)
+                        
                         self.data_reporter.update_equity(
                             jlp_amount=float(jlp_amount),
                             jlp_price=float(api_result.jlp_price),
                             jlp_value_usd=float(api_result.jlp_value_usd),
-                            total_equity_usd=float(api_result.jlp_value_usd),
-                            unrealized_pnl=0,
+                            total_equity_usd=float(total_equity),  # 真正的总净值
+                            unrealized_pnl=unrealized_pnl,
                             margin_ratio=0,
                             hedge_ratio=0,
                             positions={},
                         )
-                        logger.info(f"初始净值数据已设置: JLP={jlp_amount:.4f}, 价格=${api_result.jlp_price:.4f}")
+                        logger.info(f"初始净值数据已设置: JLP=${api_result.jlp_value_usd:.2f}, 总净值=${total_equity:.2f}")
                     else:
                         logger.warning(f"JLP 价格为 0，跳过初始上报")
                 except Exception as e:
@@ -290,12 +294,17 @@ class DeltaNeutralStrategy:
             
             # 上报净值数据到云端
             if self.data_reporter:
+                # 获取真正的账户净值（JLP价值 + USDT余额 + 空单未实现盈亏）
+                total_equity = await self.risk_monitor.get_account_equity()
+                # 计算未实现盈亏 = 总净值 - JLP价值
+                unrealized_pnl = float(total_equity) - float(status.jlp_value_usd)
+                
                 self.data_reporter.update_equity(
                     jlp_amount=float(status.jlp_amount),
                     jlp_price=float(status.jlp_price),
                     jlp_value_usd=float(status.jlp_value_usd),
-                    total_equity_usd=float(status.jlp_value_usd),  # 使用 JLP 价值作为总净值
-                    unrealized_pnl=0,  # TODO: 从账户获取
+                    total_equity_usd=float(total_equity),  # 真正的总净值
+                    unrealized_pnl=unrealized_pnl,  # 空单盈亏 + USDT余额
                     margin_ratio=float(risk_metrics.margin_ratio) if risk_metrics else 0,
                     hedge_ratio=float(status.hedge_ratio),
                     positions={
