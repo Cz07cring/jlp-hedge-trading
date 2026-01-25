@@ -225,6 +225,24 @@ def load_config(config_file: Path = None) -> AppConfig:
         cloud.enabled = True
         logger.info("检测到 LICENSE_KEY 环境变量，自动启用云端功能")
 
+    # 环境变量覆盖拆单配置（Docker 友好）
+    split_enabled = os.environ.get("SPLIT_ORDER_ENABLED")
+    split_threshold = os.environ.get("SPLIT_ORDER_THRESHOLD")
+    split_min = os.environ.get("SPLIT_ORDER_MIN_VALUE")
+    split_max = os.environ.get("SPLIT_ORDER_MAX_VALUE")
+    
+    if any([split_enabled, split_threshold, split_min, split_max]):
+        for acc in accounts:
+            if split_enabled is not None:
+                acc.trading.maker_order.split_order_enabled = split_enabled.lower() in ('true', '1', 'yes')
+            if split_threshold is not None:
+                acc.trading.maker_order.split_order_threshold = float(split_threshold)
+            if split_min is not None:
+                acc.trading.maker_order.split_order_min_value = float(split_min)
+            if split_max is not None:
+                acc.trading.maker_order.split_order_max_value = float(split_max)
+        logger.info(f"拆单配置已覆盖: enabled={split_enabled}, threshold={split_threshold}, min={split_min}, max={split_max}")
+
     logger.info(f"配置文件: {config_file}")
     logger.info(f"加载配置: {len(accounts)} 个账户")
     if cloud.enabled:
