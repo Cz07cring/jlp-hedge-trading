@@ -243,6 +243,21 @@ def load_config(config_file: Path = None) -> AppConfig:
                 acc.trading.maker_order.split_order_max_value = float(split_max)
         logger.info(f"拆单配置已覆盖: enabled={split_enabled}, threshold={split_threshold}, min={split_min}, max={split_max}")
 
+    # 环境变量覆盖最小下单数量（Docker 友好）
+    min_sol = os.environ.get("MIN_ORDER_SIZE_SOL")
+    min_eth = os.environ.get("MIN_ORDER_SIZE_ETH")
+    min_btc = os.environ.get("MIN_ORDER_SIZE_BTC")
+    
+    if any([min_sol, min_eth, min_btc]):
+        for acc in accounts:
+            if min_sol is not None:
+                acc.trading.min_order_size["SOL"] = float(min_sol)
+            if min_eth is not None:
+                acc.trading.min_order_size["ETH"] = float(min_eth)
+            if min_btc is not None:
+                acc.trading.min_order_size["BTC"] = float(min_btc)
+        logger.info(f"最小下单数量已覆盖: SOL={min_sol}, ETH={min_eth}, BTC={min_btc}")
+
     logger.info(f"配置文件: {config_file}")
     logger.info(f"加载配置: {len(accounts)} 个账户")
     if cloud.enabled:

@@ -62,6 +62,14 @@ services:
       # 单笔最大金额（USD）
       # - SPLIT_ORDER_MAX_VALUE=${SPLIT_ORDER_MAX_VALUE:-800}
       
+      # ===== 最小下单数量（可选，覆盖 accounts.json）=====
+      # SOL 最小下单数量
+      # - MIN_ORDER_SIZE_SOL=${MIN_ORDER_SIZE_SOL:-8.0}
+      # ETH 最小下单数量
+      # - MIN_ORDER_SIZE_ETH=${MIN_ORDER_SIZE_ETH:-0.1}
+      # BTC 最小下单数量
+      # - MIN_ORDER_SIZE_BTC=${MIN_ORDER_SIZE_BTC:-0.01}
+      
       # ===== 系统配置（可选）=====
       # 日志级别: DEBUG, INFO, WARNING, ERROR
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

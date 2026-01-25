@@ -82,6 +82,9 @@ python main.py
 | `SPLIT_ORDER_THRESHOLD` | ❌ | `1500` | Split threshold in USD |
 | `SPLIT_ORDER_MIN_VALUE` | ❌ | `300` | Minimum order value in USD |
 | `SPLIT_ORDER_MAX_VALUE` | ❌ | `800` | Maximum order value in USD |
+| `MIN_ORDER_SIZE_SOL` | ❌ | `8.0` | Minimum SOL order quantity |
+| `MIN_ORDER_SIZE_ETH` | ❌ | `0.1` | Minimum ETH order quantity |
+| `MIN_ORDER_SIZE_BTC` | ❌ | `0.01` | Minimum BTC order quantity |
 
 ### Configuration
 
@@ -229,6 +232,9 @@ python main.py
 | `SPLIT_ORDER_THRESHOLD` | ❌ | `1500` | 拆单阈值（USD） |
 | `SPLIT_ORDER_MIN_VALUE` | ❌ | `300` | 单笔最小金额（USD） |
 | `SPLIT_ORDER_MAX_VALUE` | ❌ | `800` | 单笔最大金额（USD） |
+| `MIN_ORDER_SIZE_SOL` | ❌ | `8.0` | SOL 最小下单数量 |
+| `MIN_ORDER_SIZE_ETH` | ❌ | `0.1` | ETH 最小下单数量 |
+| `MIN_ORDER_SIZE_BTC` | ❌ | `0.01` | BTC 最小下单数量 |
 
 ### 配置说明
 
