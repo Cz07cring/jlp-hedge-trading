@@ -78,6 +78,10 @@ python main.py
 | `REPORT_INTERVAL` | ❌ | `300` | Data reporting interval (seconds) |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level (DEBUG/INFO/WARNING/ERROR) |
 | `TZ` | ❌ | `Asia/Shanghai` | Timezone |
+| `SPLIT_ORDER_ENABLED` | ❌ | `true` | Enable order splitting |
+| `SPLIT_ORDER_THRESHOLD` | ❌ | `1500` | Split threshold in USD |
+| `SPLIT_ORDER_MIN_VALUE` | ❌ | `300` | Minimum order value in USD |
+| `SPLIT_ORDER_MAX_VALUE` | ❌ | `800` | Maximum order value in USD |
 
 ### Configuration
 
@@ -221,6 +225,10 @@ python main.py
 | `REPORT_INTERVAL` | ❌ | `300` | 数据上报间隔（秒） |
 | `LOG_LEVEL` | ❌ | `INFO` | 日志级别 |
 | `TZ` | ❌ | `Asia/Shanghai` | 时区 |
+| `SPLIT_ORDER_ENABLED` | ❌ | `true` | 是否启用拆单 |
+| `SPLIT_ORDER_THRESHOLD` | ❌ | `1500` | 拆单阈值（USD） |
+| `SPLIT_ORDER_MIN_VALUE` | ❌ | `300` | 单笔最小金额（USD） |
+| `SPLIT_ORDER_MAX_VALUE` | ❌ | `800` | 单笔最大金额（USD） |
 
 ### 配置说明
 

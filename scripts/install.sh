@@ -258,7 +258,9 @@ EOF
           "order_timeout": 5.0,
           "total_timeout": 600,
           "split_order_enabled": true,
-          "split_order_threshold": 500.0
+          "split_order_threshold": 1500.0,
+          "split_order_min_value": 300.0,
+          "split_order_max_value": 800.0
         }
       }
     }

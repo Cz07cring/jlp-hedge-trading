@@ -52,6 +52,16 @@ services:
       # 数据上报间隔（秒）
       - REPORT_INTERVAL=${REPORT_INTERVAL:-300}
       
+      # ===== 拆单配置（可选，覆盖 accounts.json）=====
+      # 是否启用拆单
+      # - SPLIT_ORDER_ENABLED=${SPLIT_ORDER_ENABLED:-true}
+      # 拆单阈值（USD），超过此金额才拆分
+      # - SPLIT_ORDER_THRESHOLD=${SPLIT_ORDER_THRESHOLD:-1500}
+      # 单笔最小金额（USD）
+      # - SPLIT_ORDER_MIN_VALUE=${SPLIT_ORDER_MIN_VALUE:-300}
+      # 单笔最大金额（USD）
+      # - SPLIT_ORDER_MAX_VALUE=${SPLIT_ORDER_MAX_VALUE:-800}
+      
       # ===== 系统配置（可选）=====
       # 日志级别: DEBUG, INFO, WARNING, ERROR
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
