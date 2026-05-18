@@ -177,11 +177,7 @@ class AsterDexClient:
             API 响应数据
         """
         url = f"{self.base_url}{endpoint}"
-        params = params or {}
-
-        # 签名
-        if signed:
-            params = self.signer.sign_simple(params)
+        request_params = params or {}
 
         # 获取签名器提供的请求头 (HMAC 模式需要 X-MBX-APIKEY)
         base_headers = self.signer.get_headers()
@@ -190,6 +186,9 @@ class AsterDexClient:
 
         for attempt in range(1, self.max_retries + 1):
             try:
+                # 签名参数包含毫秒级 timestamp，必须每次重试前重新生成。
+                params = self.signer.sign_simple(request_params) if signed else dict(request_params)
+
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     if method == "GET":
                         response = await client.get(url, params=params, headers=base_headers)

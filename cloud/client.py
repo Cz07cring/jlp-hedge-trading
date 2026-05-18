@@ -13,6 +13,7 @@ import httpx
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
+from app_version import APP_VERSION, GIT_COMMIT, DOCKER_IMAGE, AUTO_UPDATE
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,11 @@ class CloudClient:
                 headers={
                     "Content-Type": "application/json",
                     "X-License-Key": self.config.license_key,
-                    "User-Agent": "JLP-Hedge-Trading/1.0",
+                    "User-Agent": f"JLP-Hedge-Trading/{APP_VERSION}",
+                    "X-Executor-Version": APP_VERSION,
+                    "X-Executor-Commit": GIT_COMMIT,
+                    "X-Executor-Auto-Update": str(AUTO_UPDATE).lower(),
+                    "X-Executor-Image": DOCKER_IMAGE,
                 }
             )
         return self._http_client
@@ -134,6 +139,10 @@ class CloudClient:
                     "license_key": self.config.license_key,
                     "device_id": self.device_id,
                     "device_name": self.device_name,
+                    "executor_version": APP_VERSION,
+                    "executor_commit": GIT_COMMIT,
+                    "docker_image": DOCKER_IMAGE,
+                    "auto_update_enabled": AUTO_UPDATE,
                 }
             )
             

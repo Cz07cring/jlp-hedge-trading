@@ -34,15 +34,26 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # ===========================================
 FROM python:3.11-slim
 
+ARG APP_VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
+
 # 标签
 LABEL maintainer="JLP Hedge <support@jlp.finance>"
-LABEL version="1.0"
+LABEL version="${APP_VERSION}"
+LABEL org.opencontainers.image.version="${APP_VERSION}"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL description="JLP Delta Neutral Hedge Executor"
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/home/hedge/.local/bin:$PATH" \
+    APP_VERSION="${APP_VERSION}" \
+    GIT_COMMIT="${GIT_COMMIT}" \
+    DOCKER_IMAGE="ring07c/jlphedge:latest" \
+    AUTO_UPDATE="true" \
     # 默认配置
     LOG_LEVEL=INFO \
     TZ=Asia/Shanghai

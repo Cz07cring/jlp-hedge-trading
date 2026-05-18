@@ -97,11 +97,19 @@ if [ "$PUSH_ONLY" = false ]; then
     
     BUILD_START=$(date +%s)
     
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
     docker build \
         -t ${IMAGE_NAME}:${VERSION} \
         -t ${IMAGE_NAME}:latest \
+        --build-arg "APP_VERSION=${VERSION}" \
+        --build-arg "GIT_COMMIT=${GIT_COMMIT}" \
+        --build-arg "BUILD_DATE=${BUILD_DATE}" \
         --label "version=${VERSION}" \
-        --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+        --label "org.opencontainers.image.version=${VERSION}" \
+        --label "org.opencontainers.image.revision=${GIT_COMMIT}" \
+        --label "build-date=${BUILD_DATE}" \
         .
     
     BUILD_END=$(date +%s)

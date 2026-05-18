@@ -110,7 +110,7 @@ class AsterDexSigner:
 
         # 添加时间戳
         my_dict['timestamp'] = self.get_timestamp()
-        my_dict['recvWindow'] = 5000
+        my_dict['recvWindow'] = 50000
 
         # 将所有值转为字符串
         str_params = {}

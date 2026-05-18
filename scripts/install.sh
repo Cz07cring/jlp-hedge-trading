@@ -19,6 +19,9 @@ PRE_LICENSE_KEY="${LICENSE_KEY:-}"
 PRE_API_KEY="${ASTERDEX_API_KEY:-}"
 PRE_API_SECRET="${ASTERDEX_API_SECRET:-}"
 PRE_WALLET_ADDRESS="${WALLET_ADDRESS:-}"
+PRE_DOCKER_IMAGE="${DOCKER_IMAGE:-ring07c/jlphedge:latest}"
+PRE_AUTO_UPDATE="${AUTO_UPDATE:-true}"
+PRE_AUTO_UPDATE_INTERVAL="${AUTO_UPDATE_INTERVAL:-300}"
 
 # 标记是否需要重新登录
 NEED_RELOGIN=false
@@ -127,10 +130,10 @@ download_files() {
     echo -e "${BLUE}Downloading configuration files...${NC}"
     
     # 下载 docker-compose.yml
-    cat > "$INSTALL_DIR/docker-compose.yml" << 'EOF'
+    cat > "$INSTALL_DIR/docker-compose.yml" << EOF
 services:
   jlp-hedge:
-    image: ring07c/jlphedge:latest
+    image: \${DOCKER_IMAGE:-$PRE_DOCKER_IMAGE}
     container_name: jlp-hedge-executor
     restart: always
     env_file:
@@ -144,6 +147,19 @@ services:
         max-size: "10m"
         max-file: "3"
 EOF
+
+    if [ "$PRE_AUTO_UPDATE" = "true" ]; then
+        cat >> "$INSTALL_DIR/docker-compose.yml" << EOF
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: jlp-hedge-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: jlp-hedge-executor --interval \${AUTO_UPDATE_INTERVAL:-$PRE_AUTO_UPDATE_INTERVAL} --cleanup
+EOF
+    fi
     
     echo -e "${GREEN}✓${NC} Downloaded docker-compose.yml"
 }
@@ -226,6 +242,9 @@ configure_env() {
 # License (Required)
 LICENSE_KEY=$LICENSE_KEY
 CLOUD_API_URL=https://jlp.finance
+DOCKER_IMAGE=$PRE_DOCKER_IMAGE
+AUTO_UPDATE=$PRE_AUTO_UPDATE
+AUTO_UPDATE_INTERVAL=$PRE_AUTO_UPDATE_INTERVAL
 
 # Logging
 LOG_LEVEL=INFO
@@ -317,7 +336,7 @@ start_service() {
     cd "$INSTALL_DIR"
     
     # 拉取最新镜像
-    docker pull ring07c/jlphedge:latest
+    docker pull "$PRE_DOCKER_IMAGE"
     
     # 启动服务
     if command -v docker-compose &> /dev/null; then
@@ -342,7 +361,12 @@ show_completion() {
     echo "  View logs:      cd $INSTALL_DIR && docker compose logs -f"
     echo "  Stop:           cd $INSTALL_DIR && docker compose down"
     echo "  Restart:        cd $INSTALL_DIR && docker compose restart"
-    echo "  Update:         cd $INSTALL_DIR && docker compose pull && docker compose up -d"
+    echo "  Update:         curl -fsSL https://jlp.finance/update.sh | bash"
+    if [ "$PRE_AUTO_UPDATE" = "true" ]; then
+        echo "  Auto update:    enabled (Watchtower checks every ${PRE_AUTO_UPDATE_INTERVAL}s)"
+    else
+        echo "  Auto update:    disabled"
+    fi
     echo ""
     echo -e "${YELLOW}Configuration:${NC}"
     echo "  Edit config:    nano $INSTALL_DIR/data/accounts.json"

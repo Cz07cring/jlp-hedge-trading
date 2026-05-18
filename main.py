@@ -24,6 +24,7 @@ from cloud.client import CloudClient, CloudConfig
 from cloud.license_manager import LicenseManager
 from cloud.data_reporter import DataReporter
 from cloud.config_sync import ConfigSync
+from app_version import get_version_info
 
 # 配置日志
 logging.basicConfig(
@@ -53,6 +54,14 @@ class HedgeBot:
         logger.info("=" * 60)
         logger.info("  JLP Delta-Neutral 对冲机器人 (SaaS 版本)")
         logger.info("=" * 60)
+        version_info = get_version_info()
+        logger.info(
+            "Executor version=%s commit=%s image=%s auto_update=%s",
+            version_info["version"],
+            version_info["commit"],
+            version_info["docker_image"],
+            version_info["auto_update"],
+        )
 
         # 加载配置
         config = get_config()

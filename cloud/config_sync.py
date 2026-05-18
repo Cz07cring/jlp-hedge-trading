@@ -27,6 +27,7 @@ class ConfigSync:
         self.strategy_config: Dict[str, Any] = {}
         self.notification_config: Dict[str, Any] = {}
         self.preferences: Dict[str, Any] = {}
+        self.executor_update: Dict[str, Any] = {}
         
         # 配置变更回调
         self._on_config_change: Optional[Callable[[Dict[str, Any]], None]] = None
@@ -60,6 +61,7 @@ class ConfigSync:
             self.strategy_config = config.get("strategy", {})
             self.notification_config = config.get("notification", {})
             self.preferences = config.get("preferences", {})
+            self.executor_update = config.get("executor", {})
             
             self._last_sync = datetime.now()
             
@@ -75,6 +77,7 @@ class ConfigSync:
                 self._on_config_change(new_config)
             
             logger.debug("配置同步成功")
+            self._log_update_notice()
             return True
             
         except Exception as e:
@@ -201,4 +204,29 @@ class ConfigSync:
                 "wecom_enabled": self.is_wecom_enabled(),
             },
             "preferences": self.preferences,
+            "executor_update": self.executor_update,
         }
+
+    def _log_update_notice(self):
+        """Log cloud-provided executor update guidance."""
+        if not self.executor_update:
+            return
+
+        current = self.executor_update.get("currentVersion", "unknown")
+        latest = self.executor_update.get("latestVersion", "unknown")
+        message = self.executor_update.get("message")
+
+        if self.executor_update.get("updateRequired"):
+            logger.warning(
+                "执行器版本需要更新: 当前=%s 最新=%s。%s",
+                current,
+                latest,
+                message or "请更新 Docker 镜像后重启执行器。",
+            )
+        elif self.executor_update.get("updateAvailable"):
+            logger.info(
+                "发现执行器新版本: 当前=%s 最新=%s。%s",
+                current,
+                latest,
+                message or "建议在方便时更新 Docker 镜像。",
+            )

@@ -22,8 +22,8 @@ version: '3.8'
 services:
   jlp-hedge:
     # 使用官方镜像
-    image: ring07c/jlphedge:latest
-    container_name: jlp-hedge
+    image: ${DOCKER_IMAGE:-ring07c/jlphedge:latest}
+    container_name: jlp-hedge-executor
     restart: unless-stopped
     
     # 本地构建（开发用）
@@ -41,6 +41,8 @@ services:
       # ===== 必填配置 =====
       # License Key（从 https://jlp.finance/settings/license 获取）
       - LICENSE_KEY=${LICENSE_KEY:?LICENSE_KEY is required}
+      - DOCKER_IMAGE=${DOCKER_IMAGE:-ring07c/jlphedge:latest}
+      - AUTO_UPDATE=${AUTO_UPDATE:-true}
       
       # ===== 云端配置（可选）=====
       # SaaS 平台地址（License 验证、数据同步）
@@ -104,6 +106,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: jlp-hedge-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: jlp-hedge-executor --interval ${AUTO_UPDATE_INTERVAL:-300} --cleanup
 
 networks:
   hedge-network:
